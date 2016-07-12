@@ -35,9 +35,7 @@ the striping of each archived/extracted file based on the size of the
 corresponding source/archived file, respectively.
 
 Note that a stripe-aware version of cp is available in a separate
-project at:
-
-    https://pkolano.github.io/projects/mutil.html
+project at https://pkolano.github.io/projects/mutil.html.
 
 The benefit of using these tools is that files on Lustre file systems
 are created/extracted with a stripe count appropriate for their size.
