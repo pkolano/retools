@@ -1,0 +1,155 @@
+diff -rupN orig/COPYING new/COPYING
+--- orig/COPYING	2012-12-28 09:23:17.000000000 -0800
++++ new/COPYING	2014-01-31 16:42:42.000000000 -0800
+@@ -1,3 +1,8 @@
++#####################################################################
++#### NOTE: ADDITIONAL TERMS APPLY PER SECTION 7 OF THIS LICENSE. ####
++####       SEE INDIVIDUAL SOURCE FILES FOR THESE TERMS.          ####
++#####################################################################
++
+                     GNU GENERAL PUBLIC LICENSE
+                        Version 3, 29 June 2007
+ 
+diff -rupN orig/gzip.c new/gzip.c
+--- orig/gzip.c	2013-05-28 06:25:19.000000000 -0700
++++ new/gzip.c	2014-05-16 14:35:26.000000000 -0700
+@@ -28,6 +28,67 @@
+  * See the file algorithm.doc for the compression algorithms and file formats.
+  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ static char const *const license_msg[] = {
+ "Copyright (C) 2007, 2010, 2011 Free Software Foundation, Inc.",
+ "Copyright (C) 1993 Jean-loup Gailly.",
+@@ -84,6 +145,17 @@ static char const *const license_msg[] =
+ #include <stdlib.h>
+ #include <errno.h>
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <libgen.h>
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# include <sys/statfs.h>
++//TODO: lustre_idl.h includes nonexistent files so define this here
++# define LOV_MAX_STRIPE_COUNT 160
++#endif
++// < PZK
++
+ #ifndef NO_DIR
+ # define NO_DIR 0
+ #endif
+@@ -419,7 +491,9 @@ int main (int argc, char **argv)
+     if (env != NULL) args = argv;
+ 
+ #ifndef GNU_STANDARD
+-# define GNU_STANDARD 1
++// PZK >
++# define GNU_STANDARD 0
++// < PZK
+ #endif
+ #if !GNU_STANDARD
+     /* For compatibility with old compress, use program name as an option.
+@@ -435,6 +509,16 @@ int main (int argc, char **argv)
+     else if (strequ (program_name + 1, "cat")     /* zcat, pcat, gcat */
+              || strequ (program_name, "gzcat"))   /* gzcat */
+         decompress = to_stdout = 1;
++// PZK >
++# if HAVE_LIBLUSTREAPI
++    else if (strncmp (program_name, "mun",  3) == 0     /* mungzip, muncompress */
++    || strncmp (program_name, "mgun", 4) == 0) /* mgunzip */
++    decompress = 1;
++    else if (strncmp (program_name + 2, "cat", 3) == 0    /* mzcat, mpcat, mgcat */
++         || strncmp (program_name, "mgzcat", 6) == 0)   /* mgzcat */
++    decompress = to_stdout = 1;
++# endif
++// < PZK
+ #endif
+ 
+     z_suffix = Z_SUFFIX;
+@@ -926,6 +1010,25 @@ local int create_outfile()
+       sigset_t oldset;
+ 
+       sigprocmask (SIG_BLOCK, &caught_signals, &oldset);
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    // check if output file is on lustre
++    struct statfs sfs;
++    char *dir = strdup(ofname);
++    int rc = statfs(dirname(dir), &sfs);
++    free(dir);
++    struct stat st;
++    if (strcmp(ifname, "stdin") && strcmp(ifname, "stdout") &&
++            !rc && sfs.f_type == LL_SUPER_MAGIC && !stat(ifname, &st)) {
++        // compute stripe count
++        int scount = st.st_size / 1000000000 + 1;
++        if (scount > LOV_MAX_STRIPE_COUNT) scount = LOV_MAX_STRIPE_COUNT;
++        // create file with new stripe count
++        remove_ofname_fd = ofd =
++            llapi_file_open(ofname, flags, RW_USER, 0, -1, scount, 0);
++    } else
++#endif
++// < PZK
+       remove_ofname_fd = ofd = OPEN (ofname, flags, RW_USER);
+       open_errno = errno;
+       sigprocmask (SIG_SETMASK, &oldset, NULL);

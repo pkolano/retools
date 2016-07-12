@@ -1,0 +1,1276 @@
+diff -rupN orig/COPYING new/COPYING
+--- orig/COPYING	2013-03-14 13:18:09.000000000 -0700
++++ new/COPYING	2014-01-31 17:07:03.000000000 -0800
+@@ -1,3 +1,8 @@
++#####################################################################
++#### NOTE: ADDITIONAL TERMS APPLY PER SECTION 7 OF THIS LICENSE. ####
++####       SEE INDIVIDUAL SOURCE FILES FOR THESE TERMS.          ####
++#####################################################################
++
+                     GNU GENERAL PUBLIC LICENSE
+                        Version 3, 29 June 2007
+ 
+diff -rupN orig/lib/rmt.h new/lib/rmt.h
+--- orig/lib/rmt.h	2013-09-15 00:31:40.000000000 -0700
++++ new/lib/rmt.h	2014-01-31 17:26:16.000000000 -0800
+@@ -17,6 +17,67 @@
+    along with this program; if not, write to the Free Software Foundation,
+    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ extern char const *rmt_command;
+ extern char const *rmt_dev_name__;
+ 
+@@ -59,10 +120,29 @@ extern bool force_local_option;
+ #define rmtstat(dev_name, buffer) \
+   (_remdev (dev_name) ? (errno = EOPNOTSUPP), -1 : stat (dev_name, buffer))
+ 
+-#define rmtcreat(dev_name, mode, command) \
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# define LOV_MAX_STRIPE_COUNT 160
++# define llapi_creat(dev_name, mode) \
++    (archive_size \
++    ? llapi_file_open(dev_name, O_CREAT | O_TRUNC | O_WRONLY, mode, 0, -1, \
++        archive_size / 1000000000 + 1 > LOV_MAX_STRIPE_COUNT \
++            ? LOV_MAX_STRIPE_COUNT \
++            : archive_size / 1000000000 + 1, 0) \
++    : creat (dev_name, mode))
++# define rmtcreat(dev_name, mode, command) \
++   (_remdev (dev_name) \
++    ? rmt_open__ (dev_name, O_CREAT | O_WRONLY, __REM_BIAS, command) \
++    : llapi_creat (dev_name, mode))
++#else
++# define rmtcreat(dev_name, mode, command) \
+    (_remdev (dev_name) \
+     ? rmt_open__ (dev_name, O_CREAT | O_WRONLY, __REM_BIAS, command) \
+     : creat (dev_name, mode))
++#endif
++// < PZK
+ 
+ #define rmtlstat(dev_name, muffer) \
+   (_remdev (dev_name) ? (errno = EOPNOTSUPP), -1 : lstat (dev_name, buffer))
+diff -rupN orig/src/common.h new/src/common.h
+--- orig/src/common.h	2013-11-03 11:33:53.000000000 -0800
++++ new/src/common.h	2014-02-03 12:07:48.000000000 -0800
+@@ -18,6 +18,67 @@
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ /* Declare the GNU tar archive format.  */
+ #include "tar.h"
+ 
+@@ -66,6 +127,12 @@
+ 
+ #include <paxlib.h>
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++# include <gcrypt.h>
++#endif
++// < PZK
++
+ /* Log base 2 of common values.  */
+ #define LG_8 3
+ #define LG_64 6
+@@ -94,6 +161,12 @@ enum subcommand
+   TEST_LABEL_SUBCOMMAND,        /* --test-label */
+ };
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++GLOBAL off_t archive_size;
++#endif
++// < PZK
++
+ GLOBAL enum subcommand subcommand_option;
+ 
+ /* Selected format for output archive.  */
+@@ -235,6 +308,14 @@ GLOBAL bool numeric_owner_option;
+ 
+ GLOBAL bool one_file_system_option;
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++GLOBAL size_t hash_size_option;
++GLOBAL int hash_type_option;
++GLOBAL bool print_hash_option;
++#endif
++// < PZK
++
+ /* Specified value to be put into tar file in place of stat () results, or
+    just null and -1 if such an override should not take place.  */
+ GLOBAL char const *owner_name_option;
+@@ -727,6 +808,9 @@ void collect_and_sort_names (void);
+ struct name *name_scan (const char *name);
+ struct name const *name_from_list (void);
+ void blank_name_list (void);
++// PZK >
++void name_list_reset (void);
++// < PZK
+ char *new_name (const char *dir_name, const char *name);
+ size_t stripped_prefix_len (char const *file_name, size_t num);
+ bool all_names_found (struct tar_stat_info *st);
+@@ -824,6 +908,10 @@ void report_difference (struct tar_stat_
+   __attribute__ ((format (printf, 2, 3)));
+ 
+ /* Module sparse.c */
++#if HAVE_LIBGCRYPT
++int sparse_hash_file (struct tar_stat_info *st, gcry_md_hd_t *ctx);
++#endif
++// < PZK
+ bool sparse_member_p (struct tar_stat_info *st);
+ bool sparse_fixup_header (struct tar_stat_info *st);
+ enum dump_status sparse_dump_file (int, struct tar_stat_info *st);
+diff -rupN orig/src/create.c new/src/create.c
+--- orig/src/create.c	2013-11-17 07:29:17.000000000 -0800
++++ new/src/create.c	2014-02-03 12:04:17.000000000 -0800
+@@ -20,6 +20,67 @@
+ 
+    Written by John Gilmore, on 1985-08-25.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ 
+ #include <quotearg.h>
+@@ -27,6 +88,18 @@
+ #include "common.h"
+ #include <hash.h>
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <libgen.h>
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# include <sys/statfs.h>
++# include "save-cwd.h"
++//TODO: lustre_idl.h includes nonexistent files so define this here
++# define LOV_MAX_STRIPE_COUNT 160
++#endif
++// < PZK
++
+ /* Error number to use when an impostor is discovered.
+    Pretend the impostor isn't there.  */
+ enum { IMPOSTOR_ERRNO = ENOENT };
+@@ -1327,6 +1400,67 @@ create_archive (void)
+ 
+   trivial_link_count = name_count <= 1 && ! dereference_option;
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    struct stat llst;
++    // only set stripe count if writing to file and file does not exist
++    if (!write_archive_to_stdout && stat(archive_name_array[0], &llst)) {
++        // check if file path is lustre
++        struct statfs sfs;
++        char *tar_file = strdup(archive_name_array[0]);
++        char *dir = dirname(tar_file);
++        if (!statfs(dir, &sfs) && sfs.f_type == LL_SUPER_MAGIC) {
++            size_t buffer_size = 1000;
++            char *buffer = xmalloc(buffer_size);
++            const char *q;
++
++            // disable warnings
++            extern int warning_option;
++            int save_warning_option = warning_option;
++            warning_option = 0;
++
++            collect_and_sort_names();
++            while ((p = name_from_list()) != NULL) {
++                if (excluded_name(p->name)) continue;
++                if (!stat(p->name, &llst))
++                    archive_size += llst.st_size;
++                size_t plen = strlen(p->name);
++                if (buffer_size <= plen) {
++                    while ((buffer_size *= 2) <= plen) continue;
++                    buffer = xrealloc(buffer, buffer_size);
++                }
++                memcpy(buffer, p->name, plen);
++                if (!ISSLASH(buffer[plen - 1]))
++                    buffer[plen++] = DIRECTORY_SEPARATOR;
++
++                q = directory_contents(gnu_list_name->directory);
++                if (!q) continue;
++                while (*q) {
++                    size_t qlen = strlen(q);
++                    if (*q == 'Y') {
++                        if (buffer_size < plen + qlen) {
++                            while ((buffer_size *=2 ) < plen + qlen) continue;
++                            buffer = xrealloc(buffer, buffer_size);
++                        }
++                        strcpy(buffer + plen, q + 1);
++                        if (!stat(buffer, &llst))
++                            archive_size += llst.st_size;
++                    }
++                    q += qlen + 1;
++                }
++            }
++            free(buffer);
++            blank_name_list();
++            name_list_reset();
++
++            // restore warnings
++            warning_option = save_warning_option;
++        }
++        free(tar_file);
++    }
++#endif
++// < PZK
++
+   open_archive (ACCESS_WRITE);
+   buffer_write_global_xheader ();
+ 
+diff -rupN orig/src/extract.c new/src/extract.c
+--- orig/src/extract.c	2013-09-24 10:14:29.000000000 -0700
++++ new/src/extract.c	2014-01-31 17:26:21.000000000 -0800
+@@ -20,6 +20,67 @@
+ 
+    Written by John Gilmore, on 1985-11-19.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ #include <quotearg.h>
+ #include <errno.h>
+@@ -29,6 +90,18 @@
+ 
+ #include "common.h"
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <libgen.h>
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# include <sys/statfs.h>
++# include "save-cwd.h"
++//TODO: lustre_idl.h includes nonexistent files so define this here
++# define LOV_MAX_STRIPE_COUNT 160
++#endif
++// < PZK
++
+ static bool we_are_root;	/* true if our effective uid == 0 */
+ static mode_t newdir_umask;	/* umask when creating new directories */
+ static mode_t current_umask;	/* current umask (which is set to 0 if -p) */
+@@ -1026,6 +1099,39 @@ open_output_file (char const *file_name,
+ 	}
+     }
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    // check if output file is on lustre
++    struct statfs sfs;
++    int rc;
++    if (chdir_fd == AT_FDCWD) {
++        rc = statfs(".", &sfs);
++    } else {
++        rc = fstatfs(chdir_fd, &sfs);
++    }
++    if (!rc && sfs.f_type == LL_SUPER_MAGIC) {
++        struct saved_cwd saved_cwd;
++        if (chdir_fd != AT_FDCWD && !IS_ABSOLUTE_FILE_NAME(file_name)) {
++            save_cwd(&saved_cwd);
++            fchdir(chdir_fd);
++        }
++        struct stat st;
++        if (stat(file_name, &st)) {
++            // compute stripe count
++            int scount = current_stat_info.stat.st_size / 1000000000 + 1;
++            if (scount > LOV_MAX_STRIPE_COUNT) scount = LOV_MAX_STRIPE_COUNT;
++            // create file with new stripe count
++            fd = llapi_file_open(file_name, openflag, mode, 0, -1, scount, 0);
++        } else {
++            // use normal open if file exists as can't restripe
++            fd = open(file_name, openflag, mode);
++        }
++        if (chdir_fd != AT_FDCWD && !IS_ABSOLUTE_FILE_NAME(file_name)) {
++            restore_cwd(&saved_cwd);
++        }
++    } else
++#endif
++// < PZK
+   fd = openat (chdir_fd, file_name, openflag, mode);
+   if (0 <= fd)
+     {
+diff -rupN orig/src/list.c new/src/list.c
+--- orig/src/list.c	2013-03-14 13:18:10.000000000 -0700
++++ new/src/list.c	2014-01-31 17:26:23.000000000 -0800
+@@ -20,6 +20,67 @@
+ 
+    Written by John Gilmore, on 1985-08-26.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ #include <inttostr.h>
+ #include <quotearg.h>
+@@ -296,6 +357,12 @@ list_archive (void)
+ 	}
+     }
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++  // header already skipped while hashing
++  if (!print_hash_option || subcommand_option != LIST_SUBCOMMAND)
++#endif
++// < PZK
+   skip_member ();
+ }
+ 
+@@ -1073,6 +1140,65 @@ static int datewidth = sizeof "YYYY-MM-D
+ 
+ static bool volume_label_printed = false;
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++static void
++print_hash (struct tar_stat_info *st, union block *blk)
++{
++    off_t size;
++    union block *data_block;
++    size_t space;
++    gcry_md_hd_t ctx;
++    gcry_md_open(&ctx, hash_type_option, 0);
++    mv_begin_read(st);
++    set_next_block_after(blk);
++    switch (blk->header.typeflag) {
++        case GNUTYPE_SPARSE:
++            if (!sparse_hash_file(st, &ctx)) {
++                fprintf(stdlis, "ERR  ");
++                skip_member();
++                return;
++            }
++            break;
++        case AREGTYPE:
++        case REGTYPE:
++        case CONTTYPE:
++            for (size = st->stat.st_size; size > 0; ) {
++                mv_size_left(size);
++                data_block = find_next_block();
++                if (!data_block) {
++                    fprintf(stdlis, "ERR  ");
++                    skip_member();
++                    return;
++                }
++                space = available_space_after(data_block);
++                if (space > size) space = size;
++                gcry_md_write(ctx, data_block->buffer, space);
++                size -= space;
++                set_next_block_after((union block *)
++                    (data_block->buffer + space - 1));
++            }
++            skip_file(size);
++            mv_end();
++            break;
++        default:
++            // print null hash for all other types
++            fprintf(stdlis, "#-", 0);
++            for (size_t i = 0; i < hash_size_option - 1; ++i)
++                fprintf(stdlis, "--");
++            fprintf(stdlis, "  ");
++            skip_member();
++            return;
++    }
++    unsigned char *hash = gcry_md_read(ctx, 0);
++    for (size_t i = 0; i < hash_size_option; ++i)
++        fprintf(stdlis, "%02x", hash[i]);
++    gcry_md_close(ctx);
++    fprintf(stdlis, "  ");
++}
++#endif
++// < PZK
++
+ static void
+ simple_print_header (struct tar_stat_info *st, union block *blk,
+ 		     off_t block_ordinal)
+@@ -1111,6 +1237,12 @@ simple_print_header (struct tar_stat_inf
+   if (verbose_option <= 1)
+     {
+       /* Just the fax, mam.  */
++// PZK >
++#if HAVE_LIBGCRYPT
++      if (print_hash_option && subcommand_option == LIST_SUBCOMMAND)
++        print_hash(st, blk);
++#endif
++// < PZK
+       fprintf (stdlis, "%s\n", quotearg (temp_name));
+     }
+   else
+@@ -1246,26 +1378,45 @@ simple_print_header (struct tar_stat_inf
+       if (pad > ugswidth)
+ 	ugswidth = pad;
+ 
++// PZK >
++      // save items used later that may be changed during hashing
++      char *link_name = strdup(st->link_name);
++      char offset[12];
++      memcpy(offset, blk->oldgnu_header.offset, 12);
++      int typeflag = blk->header.typeflag;
++#if HAVE_LIBGCRYPT
++      if (print_hash_option && subcommand_option == LIST_SUBCOMMAND)
++        print_hash(st, blk);
++#endif
++// < PZK
+       fprintf (stdlis, "%s %s/%s %*s %-*s",
+ 	       modes, user, group, ugswidth - pad + sizelen, size,
+ 	       datewidth, time_stamp);
+ 
+       fprintf (stdlis, " %s", quotearg (temp_name));
+ 
+-      switch (blk->header.typeflag)
++// PZK >
++      switch (typeflag)
++// < PZK
+ 	{
+ 	case SYMTYPE:
+-	  fprintf (stdlis, " -> %s\n", quotearg (st->link_name));
++// PZK >
++      fprintf (stdlis, " -> %s\n", quotearg (link_name));
++// < PZK
+ 	  break;
+ 
+ 	case LNKTYPE:
+-	  fprintf (stdlis, _(" link to %s\n"), quotearg (st->link_name));
++// PZK >
++      fprintf (stdlis, _(" link to %s\n"), quotearg (link_name));
++// < PZK
+ 	  break;
+ 
+ 	default:
+ 	  {
+ 	    char type_string[2];
+-	    type_string[0] = blk->header.typeflag;
++// PZK >
++        type_string[0] = typeflag;
++// < PZK
+ 	    type_string[1] = '\0';
+ 	    fprintf (stdlis, _(" unknown file type %s\n"),
+ 		     quote (type_string));
+@@ -1299,11 +1450,16 @@ simple_print_header (struct tar_stat_inf
+ 	case GNUTYPE_MULTIVOL:
+ 	  strcpy (size,
+ 		  STRINGIFY_BIGINT
+-		  (UINTMAX_FROM_HEADER (blk->oldgnu_header.offset),
++// PZK >
++          (UINTMAX_FROM_HEADER (offset),
++// < PZK;
+ 		   uintbuf));
+ 	  fprintf (stdlis, _("--Continued at byte %s--\n"), size);
+ 	  break;
+ 	}
++// PZK >
++    free(link_name);
++// < PZK;
+     }
+   fflush (stdlis);
+   xattrs_print (st);
+diff -rupN orig/src/names.c new/src/names.c
+--- orig/src/names.c	2013-11-17 07:25:28.000000000 -0800
++++ new/src/names.c	2014-02-03 12:09:02.000000000 -0800
+@@ -16,6 +16,67 @@
+    You should have received a copy of the GNU General Public License along
+    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ 
+ #include <fnmatch.h>
+@@ -266,14 +327,37 @@ name_list_adjust (void)
+       name_head = name_head->prev;
+ }
+ 
++// PZK >
++static int name_free = 0;
++static struct name_elt *name_head0;
++void name_list_reset (void) {
++    name_head = name_head0;
++    name_free = 1;
++}
++// < PZK
++
+ static void
+ name_list_advance (void)
+ {
+   struct name_elt *elt = name_head;
++// PZK >
++  if (elt->next == NULL) {
++    name_head0 = name_head;
++    while (name_head0->prev)
++        name_head0 = name_head0->prev;
++  }
++// < PZK
++ 
+   name_head = elt->next;
++// PZK >
++  if (name_free) {
++// < PZK
+   if (name_head)
+     name_head->prev = NULL;
+   free (elt);
++// PZK >
++  }
++// < PZK
+ }
+ 
+ /* Add to name_array the file NAME with fnmatch options MATCHING_FLAGS */
+diff -rupN orig/src/sparse.c new/src/sparse.c
+--- orig/src/sparse.c	2013-11-17 07:34:43.000000000 -0800
++++ new/src/sparse.c	2014-01-31 17:26:27.000000000 -0800
+@@ -15,6 +15,67 @@
+    You should have received a copy of the GNU General Public License along
+    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ #include <inttostr.h>
+ #include <quotearg.h>
+@@ -432,6 +493,52 @@ sparse_fixup_header (struct tar_stat_inf
+   return tar_sparse_fixup_header (&file);
+ }
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++int
++sparse_hash_file(struct tar_stat_info *st, gcry_md_hd_t *ctx)
++{
++    struct tar_sparse_file file;
++    if (!tar_sparse_init(&file)) return 0;
++    file.stat_info = st;
++    file.fd = STDOUT_FILENO;
++    file.seekable = 0;
++    file.offset = 0;
++    off_t last_off = 0;
++    char zero_buf[BLOCKSIZE];
++    memset(zero_buf, 0, BLOCKSIZE);
++
++    if (!tar_sparse_decode_header(&file)) return 0;
++    for (size_t i = 0; i < file.stat_info->sparse_map_avail; i++) {
++        off_t read_off = file.stat_info->sparse_map[i].offset;
++        if (read_off > last_off) {
++            off_t o;
++            for (o = last_off ; o + BLOCKSIZE < read_off; o += BLOCKSIZE) {
++                gcry_md_write(*ctx, zero_buf, BLOCKSIZE);
++            }
++            gcry_md_write(*ctx, zero_buf, read_off - o);
++            last_off = read_off;
++        }
++        off_t read_size = file.stat_info->sparse_map[i].numbytes;
++        while (read_size > 0) {
++            size_t rdbytes = (read_size > BLOCKSIZE) ? BLOCKSIZE : read_size;
++            union block *rdblk = find_next_block();
++            if (!rdblk) return 0;
++            set_next_block_after(rdblk);
++            gcry_md_write(*ctx, rdblk->buffer, rdbytes);
++            read_size -= rdbytes;
++            file.dumped_size += rdbytes;
++            mv_size_left(file.stat_info->archive_file_size - file.dumped_size);
++            file.offset += rdbytes;
++            last_off += rdbytes;
++        }
++        //TODO: need to hash last empty block?  tests seem to indicate no
++    }
++    return 1;
++}
++#endif
++// < PZK
++
+ enum dump_status
+ sparse_extract_file (int fd, struct tar_stat_info *st, off_t *size)
+ {
+diff -rupN orig/src/system.c new/src/system.c
+--- orig/src/system.c	2013-03-14 13:18:10.000000000 -0700
++++ new/src/system.c	2014-01-31 17:26:29.000000000 -0800
+@@ -15,6 +15,67 @@
+    You should have received a copy of the GNU General Public License along
+    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ 
+ #include "common.h"
+@@ -23,6 +84,17 @@
+ #include <signal.h>
+ #include <wordsplit.h>
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <libgen.h>
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# include <sys/statfs.h>
++//TODO: lustre_idl.h includes nonexistent files so define this here
++# define LOV_MAX_STRIPE_COUNT 160
++#endif
++// < PZK
++
+ static _Noreturn void
+ xexec (const char *cmd)
+ {
+@@ -364,6 +436,26 @@ sys_child_open_for_compress (void)
+ 	 compressor.  */
+       if (strcmp (archive_name_array[0], "-"))
+ 	{
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    struct stat llst;
++    // only set stripe count if writing to file and file does not exist
++    if (archive_size && stat(archive_name_array[0], &llst)) {
++        // check if file path is lustre
++        struct statfs sfs;
++        char *tar_file = strdup(archive_name_array[0]);
++        char *dir = dirname(tar_file);
++        if (!statfs(dir, &sfs) && sfs.f_type == LL_SUPER_MAGIC) {
++            int scount = archive_size / 1000000000 + 1;
++            if (scount > LOV_MAX_STRIPE_COUNT) scount = LOV_MAX_STRIPE_COUNT;
++            archive = llapi_file_open(archive_name_array[0],
++                O_CREAT | O_TRUNC | O_WRONLY, MODE_RW, 0, -1, scount, 0);
++        }
++        free(tar_file);
++    } else
++#endif
++// < PZK
++
+ 	  archive = creat (archive_name_array[0], MODE_RW);
+ 	  if (archive < 0)
+ 	    {
+diff -rupN orig/src/tar.c new/src/tar.c
+--- orig/src/tar.c	2013-10-03 12:28:03.000000000 -0700
++++ new/src/tar.c	2014-01-31 17:26:31.000000000 -0800
+@@ -18,6 +18,67 @@
+    You should have received a copy of the GNU General Public License along
+    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
++// PZK >
++/* Additional Terms per Section 7 of GNU General Public License Version 3
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
++
+ #include <system.h>
+ 
+ #include <fnmatch.h>
+@@ -26,6 +87,12 @@
+ #include <argp-fmtstream.h>
+ #include <argp-version-etc.h>
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++# include <gcrypt.h>
++#endif
++// < PZK
++
+ #include <signal.h>
+ #if ! defined SIGCHLD && defined SIGCLD
+ # define SIGCHLD SIGCLD
+@@ -325,6 +392,12 @@ enum
+   PAX_OPTION,
+   POSIX_OPTION,
+   PRESERVE_OPTION,
++// PZK >
++#if HAVE_LIBGCRYPT
++  HASH_TYPE_OPTION,
++  PRINT_HASH_OPTION,
++#endif
++// < PZK
+   QUOTE_CHARS_OPTION,
+   QUOTING_STYLE_OPTION,
+   RECORD_SIZE_OPTION,
+@@ -825,6 +898,17 @@ static struct argp_option options[] = {
+    N_("additionally quote characters from STRING"), GRID+1 },
+   {"no-quote-chars", NO_QUOTE_CHARS_OPTION, N_("STRING"), 0,
+    N_("disable quoting for characters from STRING"), GRID+1 },
++// PZK >
++#if HAVE_LIBGCRYPT
++  {"hash-type", HASH_TYPE_OPTION, N_("TYPE"), 0,
++   N_("hash type with TYPE one of: "
++      "md5 sha1 sha256 sha384 sha512 sha224 crc32 crc32rfc1510 crc24rfc2440"
++      " (default md5)"),
++   GRID+1 },
++  {"print-hash", PRINT_HASH_OPTION, 0, 0,
++   N_("print hash of individual files when used with -t"), GRID+1 },
++#endif
++// < PZK
+ #undef GRID
+ 
+ #define GRID 140
+@@ -1886,6 +1970,28 @@ parse_opt (int key, char *arg, struct ar
+       }
+       break;
+ 
++// PZK >
++#if HAVE_LIBGCRYPT
++    case HASH_TYPE_OPTION:
++        hash_type_option = -1;
++        // 400 taken from libgcrypt benchmark code
++        for (int i = 1; i < 400; i++) {
++            if (!gcry_md_test_algo(i) &&
++                    !strcasecmp(arg, gcry_md_algo_name(i))) {
++                hash_type_option = i;
++                break;
++            }
++        }
++        if (hash_type_option < 0) FATAL_ERROR((0, 0, "Invalid hash type"));
++        else hash_size_option = gcry_md_get_algo_dlen(hash_type_option);
++        break;
++
++    case PRINT_HASH_OPTION:
++      print_hash_option = true;
++      break;
++#endif
++// < PZK
++
+     case QUOTE_CHARS_OPTION:
+       for (;*arg; arg++)
+ 	set_char_quoting (NULL, *arg, 1);
+@@ -2263,6 +2369,16 @@ decode_options (int argc, char **argv)
+ 
+   seek_option = -1;
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    archive_size = 0;
++#endif
++#if HAVE_LIBGCRYPT
++    hash_type_option = GCRY_MD_MD5;
++    hash_size_option = gcry_md_get_algo_dlen(hash_type_option);
++#endif
++// < PZK
++
+   /* Convert old-style tar call by exploding option element and rearranging
+      options accordingly.  */
+ 

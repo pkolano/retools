@@ -1,0 +1,135 @@
+Retools Installation
+====================
+
+1. Prerequisites
+
+    o bzip2 1.0.6
+
+        The Retools bzip2 patch is only applicable against version 1.0.6.
+
+    o GNU gzip 1.6
+
+        The Retools gzip patch is only applicable against version 1.6.
+
+    o rsync 3.1.0
+
+        The Retools rsync patch is only applicable against version 3.1.0.
+
+    o GNU tar 1.27.1
+
+        The Retools tar patch is only applicable against version 1.27.1.
+
+    o Lustre API library
+
+    o Libgcrypt library (optional but required for tar hashing support)
+
+        Tested with libgcrypt 1.4.5.
+
+    o Libgpg-error library (optional but required for tar hashing support)
+
+        Tested with libgpg-error 1.7.
+
+
+2. Preparation
+
+    Retools is created by applying each included patch to an unpacked
+    standard distribution of the corresponding tool.  This is done via
+    the "patch" command as shown below with the expected output for
+    each.
+
+    2.1. bzip2
+
+        cd bzip2-1.0.6
+        patch -p1 < /path/to/patch/bzip2-1.0.6.patch
+
+            patching file LICENSE
+            patching file Makefile
+            patching file bzip2.c
+
+    2.2. gzip
+
+        cd gzip-1.6
+        patch -p1 < /path/to/patch/gzip-1.6.patch
+
+            patching file COPYING
+            patching file gzip.c
+
+    2.3. rsync
+
+        cd rsync-3.1.0
+        patch -p1 < /path/to/patch/rsync-3.1.0.patch
+
+            patching file COPYING
+            patching file flist.c
+            patching file generator.c
+            patching file options.c
+            patching file receiver.c
+            patching file rsync.h
+            patching file syscall.c
+            patching file util.c
+
+    2.4. tar
+
+        cd tar-1.27.1
+        patch -p1 < /path/to/patch/tar-1.27.1.patch
+
+            patching file COPYING
+            patching file lib/rmt.h
+            patching file src/common.h
+            patching file src/create.c
+            patching file src/extract.c
+            patching file src/list.c
+            patching file src/names.c
+            patching file src/sparse.c
+            patching file src/system.c
+            patching file src/tar.c
+
+
+3. Installation
+
+    To enable the Retools modifications, you must set CFLAGS to
+    include "-DHAVE_LIBLUSTREAPI" and LIBS to include "-llustreapi"
+    before configure and/or make.  For example, in bash syntax, the
+    appropriate settings would be:
+
+        export CFLAGS="-g -O2 -DHAVE_LIBLUSTREAPI"
+        export LIBS="-llustreapi"
+
+    To enable hashing functionality within tar, you must set CFLAGS to
+    include "-DHAVE_LIBGCRYPT" and LIBS to include "-lgpg-error
+    -lgcrypt".  For example, in bash syntax, to include all
+    modifications, the appropriate settings would be:
+
+        export CFLAGS="-g -O2 -DHAVE_LIBLUSTREAPI -DHAVE_LIBGCRYPT"
+        export LIBS="-llustreapi -lgpg-error -lgcrypt"
+
+    Copy the resulting executables to their final location.  It is
+    recommended that these executables overwrite the standard system
+    versions so users will get striping benefits by default.  In this
+    case, copy as shown below (note that your destination paths may
+    differ from those shown):
+
+        cp bzip-1.0.6/bzip2 /usr/bin
+        cp bzip-1.0.6/bzip2 /usr/bin/bunzip2
+        cp gzip-1.6/gzip /usr/bin
+        cp gzip-1.6/gzip /usr/bin/gunzip
+        cp rsync-3.1.0/rsync /usr/bin
+        cp tar-1.27.1/src/tar /bin
+
+    Note that bunzip2 is a renamed bzip2 and gunzip is a renamed gzip.
+    Do not use the gunzip shell wrapper that is created during the gzip
+    build.
+
+    If you do not wish to overwrite the standard versions, you must
+    rename the executables to something else.  In this case, copy as
+    shown below (which uses an "m" prefix for each executable) to your
+    desired path (/usr/local/bin shown):
+
+        cp bzip-1.0.6/bzip2 /usr/local/bin/mbzip2
+        cp bzip-1.0.6/bzip2 /usr/local/bin/mbunzip2
+        cp gzip-1.6/gzip /usr/local/bin/mgzip
+        cp gzip-1.6/gzip /usr/local/bin/mgunzip
+        cp rsync-3.1.0/rsync /usr/local/bin/mrsync
+        cp tar-1.27.1/src/tar /usr/local/bin/mtar
+
+    Note that gzip will only uncompress when named gunzip or mgunzip.

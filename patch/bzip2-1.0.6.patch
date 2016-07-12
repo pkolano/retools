@@ -1,0 +1,159 @@
+diff -rupN orig/LICENSE new/LICENSE
+--- orig/LICENSE	2010-09-10 16:15:27.000000000 -0700
++++ new/LICENSE	2014-02-03 12:39:01.000000000 -0800
+@@ -1,3 +1,6 @@
++###########################################################################
++#### NOTE: ADDITIONAL TERMS APPLY AS GIVEN IN INDIVIDUAL SOURCE FILES. ####
++###########################################################################
+ 
+ --------------------------------------------------------------------------
+ 
+diff -rupN orig/Makefile new/Makefile
+--- orig/Makefile	2010-09-10 15:46:02.000000000 -0700
++++ new/Makefile	2010-12-20 16:34:36.000000000 -0800
+@@ -18,10 +18,10 @@ SHELL=/bin/sh
+ CC=gcc
+ AR=ar
+ RANLIB=ranlib
+-LDFLAGS=
++LDFLAGS=-Wl,-Bstatic -llustreapi -Wl,-Bdynamic
+ 
+ BIGFILES=-D_FILE_OFFSET_BITS=64
+-CFLAGS=-Wall -Winline -O2 -g $(BIGFILES)
++CFLAGS=-Wall -Winline -DHAVE_LIBLUSTREAPI -O2 -g $(BIGFILES)
+ 
+ # Where you want it installed when you do 'make install'
+ PREFIX=/usr/local
+@@ -37,11 +37,13 @@ OBJS= blocksort.o  \
+ 
+ all: libbz2.a bzip2 bzip2recover test
+ 
++# PZK >
+ bzip2: libbz2.a bzip2.o
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o bzip2 bzip2.o -L. -lbz2
++	$(CC) $(CFLAGS) -o bzip2 bzip2.o -L. -lbz2 $(LDFLAGS)
+ 
+ bzip2recover: bzip2recover.o
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o bzip2recover bzip2recover.o
++	$(CC) $(CFLAGS) -o bzip2recover bzip2recover.o $(LDFLAGS)
++# < PZK
+ 
+ libbz2.a: $(OBJS)
+ 	rm -f libbz2.a
+diff -rupN orig/bzip2.c new/bzip2.c
+--- orig/bzip2.c	2010-09-10 16:04:53.000000000 -0700
++++ new/bzip2.c	2014-02-03 12:37:19.000000000 -0800
+@@ -1,4 +1,3 @@
+-
+ /*-----------------------------------------------------------*/
+ /*--- A block-sorting, lossless compressor        bzip2.c ---*/
+ /*-----------------------------------------------------------*/
+@@ -17,6 +16,66 @@
+    in the file LICENSE.
+    ------------------------------------------------------------------ */
+ 
++// PZK >
++/* Additional Terms
++
++1.  DISCLAIMER OF WARRANTIES AND LIABILITIES; WAIVER AND INDEMNIFICATION
++
++    No Warranty: NASA PROVIDES THE COVERED WORKS "AS IS" WITHOUT ANY
++    WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
++    INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED WORKS
++    WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
++    INFRINGEMENT, ANY WARRANTY THAT THE COVERED WORKS WILL BE ERROR
++    FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM
++    TO THE COVERED WORKS. THIS AGREEMENT DOES NOT, IN ANY MANNER,
++    CONSTITUTE AN ENDORSEMENT BY NASA OR ANY OTHER RECIPIENT OF ANY
++    RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
++    APPLICATIONS RESULTING FROM USE OF THE COVERED WORKS.  FURTHER, NASA
++    DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
++    SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT
++    "AS IS."
++
++    Waiver and Indemnity: YOU AGREE TO WAIVE ANY AND ALL CLAIMS
++    AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
++    SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT.  IF YOUR USE OF THE
++    COVERED WORKS RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES
++    OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS
++    BASED ON, OR RESULTING FROM, YOUR USE OF THE COVERED WORKS, YOU
++    SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS
++    CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY OTHER RECIPIENT, TO
++    THE EXTENT PERMITTED BY LAW.  YOUR SOLE REMEDY FOR ANY SUCH MATTER
++    SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT.
++
++2.  You must ensure that the following copyright notice appears
++    prominently in the covered works:
++
++        Copyright 2012 United States Government National Aeronautics and
++        Space Administration (NASA).  No copyright is claimed in the United
++        States under Title 17, U.S. Code.  All Other Rights Reserved.
++
++3.  You must characterize Your alteration of the covered works as a
++    Modification or Contribution and must identify Yourself as the
++    originator of Your Modification or Contribution in a manner that
++    reasonably allows subsequent Recipients to identify the originator
++    of the Modification or Contribution.  In fulfillment of these
++    requirements, You must include a file (e.g., a change log file) that
++    describes the alterations made and the date of the alterations,
++    identifies You as originator of the alterations, and consents to
++    characterization of the alterations as a Modification or
++    Contribution, for example, by including a statement that the
++    Modification or Contribution is derived, directly or indirectly,
++    from covered work provided by NASA. Once consent is granted, it may
++    not thereafter be revoked.
++
++4.  You may not make any representation in the covered works or in any
++    promotional, advertising or other material that may be construed as
++    an endorsement by NASA or by any other Recipient of any product or
++    service provided by You, or that may seek to obtain commercial
++    advantage of NASA's or any other Recipient's participation in this
++    License.
++*/
++// < PZK
+ 
+ /* Place a 1 beside your platform, and 0 elsewhere.
+    Generic 32-bit Unix.
+@@ -60,6 +119,16 @@
+ #define ERROR_IF_NOT_ZERO(i)  { if ((i) != 0)    ioError(); }
+ #define ERROR_IF_MINUS_ONE(i) { if ((i) == (-1)) ioError(); }
+ 
++// PZK >
++#if HAVE_LIBLUSTREAPI
++# include <libgen.h>
++# include <lustre/liblustreapi.h>
++# include <lustre/lustre_user.h>
++# include <sys/statfs.h>
++//TODO: lustre_idl.h includes nonexistent files so define this here
++# define LOV_MAX_STRIPE_COUNT 160
++#endif
++// < PZK
+ 
+ /*---------------------------------------------*/
+ /*--
+@@ -962,6 +1031,24 @@ FILE* fopen_output_safely ( Char* name, 
+ #  if BZ_UNIX
+    FILE*     fp;
+    IntNative fh;
++// PZK >
++#if HAVE_LIBLUSTREAPI
++    // check if output file is on lustre
++    struct statfs sfs;
++    char *dir = strdup(name);
++    int rc = statfs(dirname(dir), &sfs);
++    free(dir);
++    struct stat st;
++    if (!rc && sfs.f_type == LL_SUPER_MAGIC && !stat(inName, &st)) {
++        // compute stripe count
++        int scount = st.st_size / 1000000000 + 1;
++        if (scount > LOV_MAX_STRIPE_COUNT) scount = LOV_MAX_STRIPE_COUNT;
++        // create file with new stripe count
++        fh = llapi_file_open(name, O_WRONLY|O_CREAT|O_EXCL, S_IWUSR|S_IRUSR,
++            0, -1, scount, 0);
++    } else
++#endif
++// < PZK
+    fh = open(name, O_WRONLY|O_CREAT|O_EXCL, S_IWUSR|S_IRUSR);
+    if (fh == -1) return NULL;
+    fp = fdopen(fh, mode);
